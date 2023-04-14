@@ -1,0 +1,78 @@
+---
+title: 'Assignment 9: Panel Data Models'
+output: pdf_document   
+name: Shannon Li 
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+For this assignment, I want you to work with the Fatalities data we
+used in the lecture notes. Convert your data into a `pdata.frame`
+
+```{r}
+library(plm)
+library(lmtest)
+library(stargazer)
+data(Fatalities, package='AER')
+pdat <- pdata.frame(Fatalities, index=c("state","year"))                                   
+```
+
+In class, we analyzed the effect on the total number of traffic
+fatalities. For this assignment, I want you to do it by age group. For
+that, you need to create fatality rates by age group:
+
+```{r}
+pdat$PCfatal1517 <- with(pdat, fatal1517/pop1517*1000)
+pdat$PCfatal1820 <- with(pdat, fatal1820/pop1820*1000)
+pdat$PCfatal2124 <- with(pdat, fatal2124/pop2124*1000)                        
+```
+
+In order to control for all other policies, you need to include in your
+model ``beertax`, `breath`, `drinkage`, `jail` and `service`. For the
+other variables, add the ones you think is the most appropriate to
+control for. Do not spend too much time selecting these variables. I
+just want you to explain why you want to add them in your
+regression. You must add at least three controls. Once your have
+selected them, answer the following questions using your preferred age
+group among the above three.
+
+1- Estimate the model by OLS. Interpret the result and explain why it
+is not the appropriate way to measure the effect of the policies.
+```{r}
+fit1 <- lm(fatal~beertax+drinkage+jail+service, Fatalities)
+knitr::kable(coeftest(fit1, vcov.=vcovHC)[,])
+```
+This is not the right way to measure the effect of policies because there is a bunch of counter-intuitive signs. The positive beertax coefficient implies that raising the tax will result in more fatalities. Imposing a jail sentence appears to decrease fatalities, which is a positive effect, and the same goes with the coefficient Breath.
+
+
+2- Estimate the model using the one-way time fixed effects
+model. Interpret the results.
+```{r}
+fit4 <- plm(fatal~beertax+breath+drinkage+jail+service,data=pdat, effect="time")
+se2 <- sqrt(diag(vcovHC(fit4)))
+stargazer(fit4, se=list(se2), header=FALSE, float=FALSE, digits=4,column.labels=c("Time"), model.numbers=FALSE)
+```
+
+
+3- Estimate the model using the one-way individual fixed effects
+model. Interpret the results.
+```{r}
+fit2 <- lm(fatal~beertax+breath+drinkage+jail+service,data=pdat, effect="individual")
+se1 <- sqrt(diag(vcovHC(fit2)))
+stargazer(fit2, se=list(se1), header=FALSE, float=FALSE, digits=4,column.labels=c("Individual"), model.numbers=FALSE)
+```
+
+
+4- Estimate the model using the two-way fixed effects model. Interpret
+the results.
+```{r}
+fit5 <- plm(fatal~beertax+breath+drinkage+jail+service,data=pdat, effect="twoways")
+se3 <- sqrt(diag(vcovHC(fit5)))
+stargazer(fit5, se=list(se3), header=FALSE, float=FALSE, digits=4,column.labels=c("Two-ways"), model.numbers=FALSE)
+```
+
+
+5- Compare all your results. Which model is the most likely to be
+produce a good measure of the causal effect of the policies? Explain. 
